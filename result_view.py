@@ -3,7 +3,7 @@
 import streamlit as st
 
 from explanation import explain_in_simple_words
-from model import combine_score, predict, risk_from_score
+from model import MODEL_FILE, combine_score, predict, risk_from_score
 from rules import find_red_flags
 
 
@@ -50,7 +50,11 @@ def render_result(
             st.warning("Paste a message or choose an example first.")
             return
 
-        result = analyze_message(text)
+        if not MODEL_FILE.exists():
+            with st.spinner("Training the local model for its first use..."):
+                result = analyze_message(text)
+        else:
+            result = analyze_message(text)
         flags = result["red_flags"]
         model_probability = result["model_probability"]
         model_available = result["model_available"]

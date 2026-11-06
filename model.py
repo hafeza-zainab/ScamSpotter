@@ -107,9 +107,10 @@ def predict(text: str) -> float:
     if not isinstance(text, str):
         raise TypeError("text must be a string")
     if not MODEL_FILE.exists():
-        raise FileNotFoundError(
-            f"{MODEL_FILE} is missing. Run python model.py to train and save it."
-        )
+        # First use in a fresh checkout trains locally and caches the pipeline.
+        train_model()
+    if not MODEL_FILE.exists():
+        raise FileNotFoundError(f"Training did not create the model at {MODEL_FILE}.")
     classifier = joblib.load(MODEL_FILE)
     scam_index = list(classifier.classes_).index("scam")
     return float(classifier.predict_proba([text])[0][scam_index])

@@ -32,9 +32,25 @@ def test_demo_message_matches_its_expected_risk(scene):
         assert result["risk"] == "Low"
 
 
-def test_missing_model_uses_rules_and_shows_fallback_state(monkeypatch):
-    missing_model = model.MODEL_FILE.with_name("missing_test_model.pkl")
+def test_missing_model_trains_and_caches(monkeypatch):
+    missing_model = model.MODEL_FILE.with_name("model_auto_train_test.pkl")
     monkeypatch.setattr(model, "MODEL_FILE", missing_model)
+
+    try:
+        probability = model.predict("Please share your OTP with the agent")
+        assert missing_model.exists()
+        assert 0.0 <= probability <= 1.0
+    finally:
+        missing_model.unlink(missing_ok=True)
+
+
+def test_missing_model_and_training_data_fall_back_to_rules(monkeypatch):
+    monkeypatch.setattr(
+        model, "MODEL_FILE", model.MODEL_FILE.with_name("missing_test_model.pkl")
+    )
+    monkeypatch.setattr(
+        model, "DATA_FILE", model.DATA_FILE.with_name("missing_test_messages.csv")
+    )
 
     result = analyze_message("Please share your OTP with the agent")
 

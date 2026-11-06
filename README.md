@@ -1,4 +1,4 @@
-# Scam Message Checker
+# ScamSpotter
 
 An educational project for the Community Impact student AI hackathon. The app helps people pause and review suspicious SMS, WhatsApp, and email messages before they respond.
 
@@ -34,9 +34,9 @@ python model.py
 streamlit run app.py
 ~~~
 
-The generator writes 400 synthetic examples (200 scam and 200 safe) to data/messages.csv. The training command prints accuracy, scam precision and recall, confusion matrices, evaluates the separate challenge set, and saves the trained classifier to model.pkl.
+The generator writes 400 synthetic examples (200 scam and 200 safe) to data/messages.csv. The training command prints accuracy, scam precision and recall, confusion matrices, evaluates the separate challenge set, and saves the trained classifier to model.pkl. Running python model.py before the app is optional: if model.pkl is missing, the first message check trains the model locally, shows a progress spinner, and caches the result. If the training data is unavailable, the checker continues with rules-only guidance and displays a notice.
 
-In the app, select “Start guided demo” to see the example walkthrough. It uses fictional messages, the same live result renderer as the regular checker, and does not save or log message text.
+In the app, select “▶ Run demo” to see the example walkthrough. It uses fictional messages, the same live result renderer as the regular checker, and does not save or log message text.
 
 Optional tests:
 
@@ -80,7 +80,7 @@ These are small educational checks, not evidence of real-world accuracy. The gen
 
 ## AI tools used
 
-OpenAI Codex was used as a coding assistant for project scaffolding, synthetic dataset generation, red-flag rules, tests, and app/documentation improvements. I reviewed, tested, and modified the code and checked the behavior against sample messages.
+OpenAI Codex assisted with project scaffolding, the synthetic dataset generator, red-flag rules, the local classifier, Streamlit UI and demo, documentation, and pytest coverage. I reviewed and modified the code, ran the tests, and checked the behavior against sample messages.
 
 ## What I learned
 

@@ -5,8 +5,8 @@ import streamlit as st
 from result_view import render_result as _render_result
 from demo import run_demo
 
-st.set_page_config(page_title="Scam Message Checker", page_icon="🛡️", layout="centered")
-st.title("🛡️ Scam Message Checker")
+st.set_page_config(page_title="ScamSpotter", page_icon="🛡️", layout="centered")
+st.title("🛡️ ScamSpotter")
 st.write("Paste a suspicious SMS, WhatsApp message, or email to review its warning signs.")
 st.caption("Messages are checked in this app and are not stored or logged by the app.")
 
