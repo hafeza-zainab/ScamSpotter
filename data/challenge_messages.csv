@@ -1,0 +1,11 @@
+text,label
+"Bank alert: Rs 450 debited at Cobalt Cafe. Your available balance is Rs 2,300.",safe
+"Your login OTP is 572913. Do not share it with anyone.",safe
+"Your UPI payment of Rs 450 to Cobalt Cafe is complete.",safe
+"Your parcel will arrive tomorrow. Track it in the official app.",safe
+"Hi, reached home?",safe
+"Your bank account is blocked. Share your OTP immediately to restore access.",scam
+"Aapka KYC expire ho gaya. Abhi OTP aur UPI PIN bhejo warna khata band ho jayega.",scam
+"OTP do",scam
+"Prize winner! Pay Rs 99 fee now.",scam
+"Bank security team: tell us your OTP to prevent account freeze.",scam

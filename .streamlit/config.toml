@@ -1,0 +1,4 @@
+# Keep this demo local to the same computer so pasted messages aren't exposed
+# to other devices on the network by the development server.
+[server]
+address = "127.0.0.1"
