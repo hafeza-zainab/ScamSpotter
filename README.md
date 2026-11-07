@@ -16,6 +16,7 @@ Paste a message into the local Streamlit app to get a Low, Medium, or High risk 
 - Red flags with names and plain-English explanations.
 - Optional “Explain in simple words” summary based only on the model score and detected flags.
 - Guided demo that types fictional examples and runs each through the live rules and model.
+- Optional audio narration for the guided demo, generated from scene captions rather than scam messages.
 - Practical advice about links, OTPs, official bank contact details, and reporting cybercrime in India.
 - Clickable sample messages, including safe notices and Hinglish examples.
 - Local TF-IDF word and character features with Logistic Regression.
@@ -37,6 +38,15 @@ streamlit run app.py
 The generator writes 400 synthetic examples (200 scam and 200 safe) to data/messages.csv. The training command prints accuracy, scam precision and recall, confusion matrices, evaluates the separate challenge set, and saves the trained classifier to model.pkl. Running python model.py before the app is optional: if model.pkl is missing, the first message check trains the model locally, shows a progress spinner, and caches the result. If the training data is unavailable, the checker continues with rules-only guidance and displays a notice.
 
 In the app, select “▶ Run demo” to see the example walkthrough. It uses fictional messages, the same live result renderer as the regular checker, and does not save or log message text.
+
+To generate the optional narration audio, install the development tools and run:
+
+~~~powershell
+pip install -r requirements-dev.txt
+python tools/generate_audio.py
+~~~
+
+The script reads each scene's editable narration text from demo.py and writes scene_01.mp3 through scene_10.mp3 in assets/audio/. It uses edge-tts with the en-IN-NeerjaNeural Indian English voice. These short generic narrations do not read the sample scam messages or user-pasted messages aloud. If audio files are absent, the demo continues silently.
 
 Optional tests:
 
@@ -104,4 +114,6 @@ OpenAI Codex assisted with project scaffolding, the synthetic dataset generator,
 - Streamlit — app interface.
 - scikit-learn — text features, classifier, and evaluation metrics.
 - joblib — model persistence.
+- edge-tts — generated Indian English demo narration (development tool only).
+- The demo's small MP3 frame reader — reads narration duration without an extra runtime dependency.
 - pandas — Python data-analysis library acknowledged here; the current project reads CSV files with Python's built-in csv module and does not require pandas.

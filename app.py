@@ -36,7 +36,7 @@ def _stop_demo() -> None:
 
 st.session_state.setdefault("demo_running", False)
 demo_running = st.session_state["demo_running"]
-demo_columns = st.columns([2, 2, 1])
+demo_columns = st.columns([2, 2, 1, 1])
 with demo_columns[0]:
     st.button(
         "▶ Run demo",
@@ -54,6 +54,13 @@ with demo_columns[1]:
         disabled=demo_running,
     )
 with demo_columns[2]:
+    sound_enabled = st.checkbox(
+        "🔊 Sound",
+        value=True,
+        key="demo_sound",
+        disabled=demo_running,
+    )
+with demo_columns[3]:
     if demo_running:
         st.button(
             "■ Stop demo",
@@ -70,7 +77,10 @@ elif st.session_state.pop("demo_finished", False):
 elif st.session_state.pop("demo_requested", False):
     speed_values = {"Slow": 1.8, "Normal": 1.0, "Fast": 0.35}
     try:
-        run_demo(speed=speed_values[demo_speed_label])
+        run_demo(
+            speed=speed_values[demo_speed_label],
+            sound_enabled=sound_enabled,
+        )
     finally:
         st.session_state["demo_running"] = False
     # Refresh the button states and carry the completion message into the rerun.
