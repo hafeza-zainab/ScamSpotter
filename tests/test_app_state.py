@@ -37,6 +37,9 @@ def test_cached_result_renders_explanation_without_reanalysis(monkeypatch):
     checkbox_keys = []
 
     class FakeContainer:
+        def container(self):
+            return self
+
         def __enter__(self):
             return self
 

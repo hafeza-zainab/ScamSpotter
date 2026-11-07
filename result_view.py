@@ -46,7 +46,9 @@ def render_result(
     analysis: dict | None = None,
 ) -> None:
     """Render cached or newly analyzed risk, flags, advice, and explanation."""
-    with container:
+    # A placeholder itself is a single slot: successive writes can replace one
+    # another. A child container groups the full result as one placeholder item.
+    with container.container():
         if not text.strip():
             st.warning("Paste a message or choose an example first.")
             return

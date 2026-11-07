@@ -5,7 +5,7 @@ import time
 
 import streamlit as st
 
-from result_view import render_result
+from result_view import analyze_message, render_result
 
 
 # Keep these scenes as editable data so the demo story can be changed easily.
@@ -68,9 +68,15 @@ SCENES = [
 ]
 
 
-def wait(seconds: float, speed: float) -> None:
-    """Pause in one place; speed scales scene and typing delays consistently."""
-    time.sleep(max(0.0, seconds) * speed)
+def wait(seconds: float, speed: float, on_tick=None) -> None:
+    """Pause in one place, update the visible clock, and scale delay by speed."""
+    remaining = max(0.0, seconds) * speed
+    while remaining > 0:
+        tick = min(0.1, remaining)
+        time.sleep(tick)
+        remaining -= tick
+        if on_tick is not None:
+            on_tick()
 
 
 def _show_typed_message(message: str, placeholder, speed: float, update_clock) -> None:
@@ -85,7 +91,7 @@ def _show_typed_message(message: str, placeholder, speed: float, update_clock) -
             unsafe_allow_html=True,
         )
         update_clock()
-        wait(0.018, speed)
+        wait(0.018, speed, update_clock)
 
 
 def run_demo(speed: float = 1.0) -> None:
@@ -123,14 +129,21 @@ def run_demo(speed: float = 1.0) -> None:
                 speed,
                 lambda: update_caption(index, scene["caption"]),
             )
-            # Every example goes through the same real model, rules, and result UI.
+            # Demo and manual checks share the same analyzer and result renderer.
+            analysis = analyze_message(message)
             render_result(
                 message,
                 result_placeholder,
                 show_explanation=scene.get("show_explanation", False),
+                analysis=analysis,
             )
+            update_caption(index, scene["caption"])
 
-        wait(scene["wait_time"], speed)
+        wait(
+            scene["wait_time"],
+            speed,
+            lambda: update_caption(index, scene["caption"]),
+        )
 
     # Remove the tour's temporary UI so the normal input form is ready below.
     caption_placeholder.empty()
