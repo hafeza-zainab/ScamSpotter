@@ -44,3 +44,23 @@ def test_empty_input_returns_a_guidance_result_without_prediction(monkeypatch):
     assert result["risk"] == "Low"
     assert result["red_flags"] == []
     assert "Enter a message" in result["summary"]
+
+
+def test_model_warmup_is_cached_once(monkeypatch):
+    calls = []
+    cached_model = object()
+
+    def load_once():
+        calls.append("loaded")
+        return cached_model
+
+    model.get_model.clear()
+    monkeypatch.setattr(model, "_load_or_train_model", load_once)
+    try:
+        first = model.warm_model()
+        second = model.warm_model()
+        assert first is cached_model
+        assert second is first
+        assert calls == ["loaded"]
+    finally:
+        model.get_model.clear()

@@ -3,7 +3,7 @@
 import streamlit as st
 
 from app_state import clear_result, remember_result
-from model import MODEL_FILE
+from model import MODEL_FILE, warm_model
 from result_view import analyze_message
 from result_view import render_result as _render_result
 from demo import run_demo
@@ -12,6 +12,11 @@ st.set_page_config(page_title="ScamSpotter", page_icon="🛡️", layout="center
 st.title("🛡️ ScamSpotter")
 st.write("Paste a suspicious SMS, WhatsApp message, or email to review its warning signs.")
 st.caption("Messages are checked in this app and are not stored or logged by the app.")
+
+# Loading an existing small artifact is cheap. Do not cold-train during page load.
+if MODEL_FILE.is_file():
+    with st.spinner("Loading the saved local model..."):
+        warm_model()
 
 def render_result(text: str, container) -> None:
     """Render the shared live model-and-rules result in the requested container."""

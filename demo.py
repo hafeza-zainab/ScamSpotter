@@ -6,6 +6,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from model import warm_model
 from result_view import analyze_message, render_result
 
 AUDIO_DIR = Path(__file__).parent / "assets" / "audio"
@@ -140,6 +141,11 @@ def audio_duration_seconds(audio_path: Path) -> float:
     # for a valid but unusual frame layout that the small parser cannot read.
     return len(audio_bytes) * 8 / 48000
 
+def scene_target_duration(message: str | None, speed: float, audio_duration: float, pause: float) -> float:
+    """Bound scene duration to the longer of typing/audio plus a short pause."""
+    typing_duration = len(message or "") * 0.018 * speed
+    return max(typing_duration, audio_duration) + min(pause * speed, 0.3)
+
 
 def _show_typed_message(message: str, placeholder, speed: float, update_clock) -> None:
     """Reveal fictional demo text a character at a time in a text-box style."""
@@ -161,6 +167,12 @@ def run_demo(speed: float = 1.0, sound_enabled: bool = True) -> None:
     if speed < 0:
         raise ValueError("speed must be zero or greater")
 
+    preparation_caption = st.empty()
+    preparation_caption.caption("Preparing the demo...")
+    with st.spinner("Preparing the demo..."):
+        warm_model()
+    preparation_caption.empty()
+
     started_at = time.monotonic()
     total_steps = len(SCENES)
     caption_placeholder = st.empty()
@@ -170,8 +182,13 @@ def run_demo(speed: float = 1.0, sound_enabled: bool = True) -> None:
     result_placeholder = st.empty()
     audio_placeholder = st.empty()
     st.markdown(
-        "<style>div[data-testid='stAudio']{margin:0;padding:0;max-height:2rem;"
-        "overflow:hidden}div[data-testid='stAudio'] audio{height:2rem}</style>",
+        "<style>"
+        "div[data-testid='stAudio']{width:0!important;height:0!important;"
+        "opacity:0!important;position:absolute!important;pointer-events:none!important;"
+        "overflow:hidden!important}"
+        "div[data-testid='stAudio'] audio{width:0!important;height:0!important;"
+        "opacity:0!important;position:absolute!important;pointer-events:none!important}"
+        "</style>",
         unsafe_allow_html=True,
     )
 
@@ -227,9 +244,13 @@ def run_demo(speed: float = 1.0, sound_enabled: bool = True) -> None:
 
             update_caption(index, scene["caption"])
             elapsed = time.monotonic() - scene_started
-            # Scale normal waits by speed, but always allow the audio to finish.
-            audio_target = audio_duration + 0.25 if audio_duration else 0.0
-            target_duration = max(scene["wait_time"] * speed, audio_target)
+            # Typing and narration overlap; only leave a brief scene pause after them.
+            target_duration = scene_target_duration(
+                message,
+                speed,
+                audio_duration,
+                scene["wait_time"],
+            )
             wait(
                 max(0.0, target_duration - elapsed),
                 1.0,

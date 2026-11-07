@@ -36,6 +36,7 @@ def test_demo_message_matches_its_expected_risk(scene):
 
 def test_missing_model_trains_and_caches(monkeypatch):
     missing_model = model.MODEL_FILE.with_name("model_auto_train_test.pkl")
+    model.get_model.clear()
     monkeypatch.setattr(model, "MODEL_FILE", missing_model)
 
     try:
@@ -43,10 +44,12 @@ def test_missing_model_trains_and_caches(monkeypatch):
         assert missing_model.exists()
         assert 0.0 <= probability <= 1.0
     finally:
+        model.get_model.clear()
         missing_model.unlink(missing_ok=True)
 
 
 def test_missing_model_and_training_data_fall_back_to_rules(monkeypatch):
+    model.get_model.clear()
     monkeypatch.setattr(
         model, "MODEL_FILE", model.MODEL_FILE.with_name("missing_test_model.pkl")
     )
@@ -60,3 +63,4 @@ def test_missing_model_and_training_data_fall_back_to_rules(monkeypatch):
     assert result["model_probability"] is None
     assert result["red_flags"]
     assert result["risk"] == "Medium"
+    model.get_model.clear()

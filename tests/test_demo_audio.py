@@ -1,6 +1,7 @@
 """Tests for optional demo narration assets and missing-audio behavior."""
 
 from pathlib import Path
+from contextlib import nullcontext
 
 import demo
 
@@ -12,6 +13,16 @@ def test_every_scene_has_narration_and_a_matching_filename():
         audio_path = demo.scene_audio_path(scene_number)
         assert audio_path.name == f"scene_{scene_number:02d}.mp3"
         assert audio_path.is_file()
+
+
+def test_scene_target_is_typing_or_audio_plus_only_a_short_pause():
+    message = "A short typed sample."
+    speed = 0.35
+    audio_duration = 6.0
+    target = demo.scene_target_duration(message, speed, audio_duration, pause=1.4)
+
+    assert target >= audio_duration
+    assert target <= max(len(message) * 0.018 * speed, audio_duration) + 0.3
 
 
 def test_demo_runs_silently_when_audio_files_are_missing(monkeypatch):
@@ -46,8 +57,10 @@ def test_demo_runs_silently_when_audio_files_are_missing(monkeypatch):
     monkeypatch.setattr(demo, "AUDIO_DIR", Path(__file__).parent / "audio_that_is_not_present")
     monkeypatch.setattr(demo.st, "empty", FakePlaceholder)
     monkeypatch.setattr(demo.st, "progress", lambda _value: FakeProgress())
+    monkeypatch.setattr(demo.st, "spinner", lambda _text: nullcontext())
     monkeypatch.setattr(demo.st, "markdown", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(demo.st, "success", lambda _text: None)
+    monkeypatch.setattr(demo, "warm_model", lambda: None)
     monkeypatch.setattr(demo, "analyze_message", lambda _text: {"risk": "Medium"})
     monkeypatch.setattr(
         demo,

@@ -4,9 +4,12 @@ Run python model.py to evaluate the data and save model.pkl.
 """
 
 import csv
+import logging
 from pathlib import Path
+from time import perf_counter
 
 import joblib
+import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score
@@ -18,6 +21,7 @@ from rules import find_red_flags
 DATA_FILE = Path(__file__).parent / "data" / "messages.csv"
 CHALLENGE_FILE = Path(__file__).parent / "data" / "challenge_messages.csv"
 MODEL_FILE = Path(__file__).parent / "model.pkl"
+LOGGER = logging.getLogger(__name__)
 
 def combine_score(scam_probability: float, red_flag_count: int) -> float:
     """Blend the model estimate and explicit warning signs into one risk score."""
@@ -80,8 +84,12 @@ def train_model() -> Pipeline:
     # all available data. The reported metrics come only from the held-out set.
     final_model = build_classifier()
     final_model.fit(messages, labels)
-    joblib.dump(final_model, MODEL_FILE)
-    print(f"Saved trained model to {MODEL_FILE}")
+    try:
+        joblib.dump(final_model, MODEL_FILE)
+        print(f"Saved trained model to {MODEL_FILE}")
+    except OSError:
+        # Keep the in-memory model usable on read-only deployments.
+        LOGGER.exception("Could not write the model cache file at %s", MODEL_FILE)
     evaluate_challenge_set(final_model)
     return final_model
 
@@ -102,16 +110,50 @@ def evaluate_challenge_set(classifier: Pipeline) -> None:
     print("Tricky-message confusion matrix (rows=true [safe, scam], columns=predicted [safe, scam]):")
     print(confusion_matrix(labels, predictions, labels=["safe", "scam"]))
 
+def _load_or_train_model() -> Pipeline | None:
+    """Load a compatible model or train one, logging cold-start duration only."""
+    started = perf_counter()
+    source = "saved model"
+    classifier = None
+    try:
+        if MODEL_FILE.is_file():
+            try:
+                classifier = joblib.load(MODEL_FILE)
+            except Exception:
+                source = "retrained after model load error"
+                LOGGER.exception("Saved ScamSpotter model failed to load; retraining locally")
+                classifier = train_model()
+        else:
+            source = "trained from bundled data"
+            classifier = train_model()
+    except FileNotFoundError:
+        # Keep the UI usable with rules if the training data is unavailable.
+        source = "rules-only fallback (training data unavailable)"
+        LOGGER.exception("ScamSpotter model unavailable; using rule-only guidance")
+    finally:
+        LOGGER.info(
+            "ScamSpotter model initialization took %.2f seconds (%s)",
+            perf_counter() - started,
+            source,
+        )
+    return classifier
+
+@st.cache_resource(show_spinner=False)
+def get_model() -> Pipeline | None:
+    """Return one model instance per Streamlit server process."""
+    return _load_or_train_model()
+
+def warm_model() -> Pipeline | None:
+    """Load or train the classifier before a demo or first prediction."""
+    return get_model()
+
 def predict(text: str) -> float:
     """Return the model's scam probability as a number from 0.0 to 1.0."""
     if not isinstance(text, str):
         raise TypeError("text must be a string")
-    if not MODEL_FILE.exists():
-        # First use in a fresh checkout trains locally and caches the pipeline.
-        train_model()
-    if not MODEL_FILE.exists():
+    classifier = get_model()
+    if classifier is None:
         raise FileNotFoundError(f"Training did not create the model at {MODEL_FILE}.")
-    classifier = joblib.load(MODEL_FILE)
     scam_index = list(classifier.classes_).index("scam")
     return float(classifier.predict_proba([text])[0][scam_index])
 
