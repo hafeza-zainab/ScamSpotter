@@ -1,0 +1,70 @@
+ScamSpotter manual validation set
+All names, brands, amounts, and example URLs below are invented for testing.
+
+SCAMS — 8
+
+1. Fake KYC update
+MangoLeaf Bank: your KYC is incomplete and your account will be restricted tonight. Share the OTP with our verification desk now: https://verify.example/mango
+
+2. Fake courier fee
+Orbit Parcel delivery for EX-7304 is on hold because customs needs Rs 87. Pay the release charge at https://parcel-fee.example/track today.
+
+3. Fake job offer
+Congratulations, Meera! You are selected for a remote data-entry role paying Rs 4,500 per day. Send a refundable Rs 299 onboarding deposit before the orientation call.
+
+4. Fake electricity disconnection
+Cedar Electricity notice: meter service will be disconnected at 8 pm for an unpaid bill. Scan the attached UPI QR and pay Rs 1,180 immediately.
+
+5. Scam with no link
+Your BlueKite Bank account is frozen. Call the verification officer and read out the OTP you just received so we can unlock it.
+
+6. Hinglish prize scam
+Aapne Nila Lucky Draw mein Rs 25,000 jeeta hai! Prize lene ke liye abhi Rs 250 processing fee bhejo aur OTP batao.
+
+7. Fake bank reversal
+We are from Saffron Credit support. A failed transfer of Rs 6,200 is pending; tell us your UPI PIN to reverse it.
+
+8. Fake government refund
+Your tax refund of Rs 9,840 is approved by the fictional Revenue Help Desk. Pay Rs 120 verification charges today to release the amount.
+
+
+GENUINE-SOUNDING MESSAGES — 8
+
+1. Bank debit alert
+MangoLeaf Bank alert: Rs 640 was spent at Juniper Mart using your card ending 2718. If you do not recognize this, call the number printed on your card.
+
+2. Bank credit alert
+Rs 3,200 has been credited to your CedarPay account. View the transaction in the official app. No reply is needed.
+
+3. Delivery update
+Orbit Parcel EX-4182 is out for delivery today. The courier will leave it with the front desk if you are away.
+
+4. Delivery completed
+Your Paper Boat Books parcel was delivered to the reception at 2:15 pm. No payment is due.
+
+5. OTP safety notice
+Your login OTP is 583104. Do not share this code with anyone; our team will never ask you for it.
+
+6. OTP for a requested sign-in
+You requested a sign-in code for BlueKite Wallet. Your OTP is 740291. Don't share it with anyone.
+
+7. Friend chatting
+Hey Kabir, I left the blue notebook in our usual study room. Can you bring it tomorrow?
+
+8. Appointment reminder
+Reminder from fictional Cedar Grove Clinic: your appointment is Tuesday at 11:30 am. Call the clinic using your saved contact if you need to reschedule.
+
+
+TRICKY — 4 (decide after checking context)
+
+1. Bank alert with an action
+Bank alert: a transfer of Rs 2,400 needs confirmation. Open your banking app and review recent activity.
+
+2. Parcel reschedule request
+Your delivery could not be completed. Choose another delivery time from the tracking page in your courier app.
+
+3. Unsolicited job message
+Hi Aarav, we saw your profile and have a flexible evening support role. Reply if you want the role details and company name.
+
+4. UPI collect request
+Juniper Mart sent you a UPI collect request for Rs 450. Approve only if you recognize this purchase.

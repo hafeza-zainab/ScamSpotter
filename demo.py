@@ -1,4 +1,4 @@
-"""A short, local-only guided tour of the Scam Message Checker."""
+"""A short, local-only guided tour of ScamSpotter."""
 
 import html
 import time

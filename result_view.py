@@ -43,18 +43,23 @@ def render_result(
     text: str,
     container,
     show_explanation: bool | None = None,
+    analysis: dict | None = None,
 ) -> None:
-    """Render model-backed risk, rule flags, advice, and optional explanation."""
+    """Render cached or newly analyzed risk, flags, advice, and explanation."""
     with container:
         if not text.strip():
             st.warning("Paste a message or choose an example first.")
             return
 
-        if not MODEL_FILE.exists():
-            with st.spinner("Training the local model for its first use..."):
+        if analysis is None:
+            if not MODEL_FILE.exists():
+                with st.spinner("Training the local model for its first use..."):
+                    result = analyze_message(text)
+            else:
                 result = analyze_message(text)
         else:
-            result = analyze_message(text)
+            # The main page supplies the result computed when Check was clicked.
+            result = analysis
         flags = result["red_flags"]
         model_probability = result["model_probability"]
         model_available = result["model_available"]

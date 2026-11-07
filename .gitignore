@@ -21,6 +21,7 @@ secrets.*
 
 # Generated model and common editor/OS files
 model.pkl
+model_*.pkl
 .idea/
 .vscode/
 .DS_Store

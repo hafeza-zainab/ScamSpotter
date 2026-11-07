@@ -2,6 +2,9 @@
 
 import streamlit as st
 
+from app_state import clear_result, remember_result
+from model import MODEL_FILE
+from result_view import analyze_message
 from result_view import render_result as _render_result
 from demo import run_demo
 
@@ -14,13 +17,19 @@ def render_result(text: str, container) -> None:
     """Render the shared live model-and-rules result in the requested container."""
     _render_result(text, container)
 
+def _clear_checked_result() -> None:
+    """Forget the previous analysis when the input or demo changes."""
+    clear_result(st.session_state)
+
 def _start_demo() -> None:
     """Mark the walkthrough as requested before Streamlit reruns the page."""
+    _clear_checked_result()
     st.session_state["demo_running"] = True
     st.session_state["demo_requested"] = True
 
 def _stop_demo() -> None:
     """Stop the current walkthrough when Streamlit handles the next interaction."""
+    _clear_checked_result()
     st.session_state["demo_running"] = False
     st.session_state["demo_requested"] = False
     st.session_state["demo_stop_requested"] = True
@@ -82,6 +91,7 @@ EXAMPLES = {
 
 def choose_example(example_name: str) -> None:
     """Place a sample in the input box; it remains only in session memory."""
+    _clear_checked_result()
     st.session_state["message_input"] = EXAMPLES[example_name]
 
 st.subheader("Try an example")
@@ -99,12 +109,33 @@ for index, example_name in enumerate(EXAMPLES):
 message = st.text_area(
     "Message to check",
     key="message_input",
+    on_change=_clear_checked_result,
     height=170,
     placeholder="Paste the message here...",
 )
 
-if st.button("Check message", type="primary", use_container_width=True):
-    render_result(message, st.container())
+if st.button("Check message", key="check_message_button", type="primary", use_container_width=True):
+    if message.strip():
+        if not MODEL_FILE.exists():
+            with st.spinner("Training the local model for its first use..."):
+                analysis = analyze_message(message)
+        else:
+            analysis = analyze_message(message)
+    else:
+        analysis = None
+    remember_result(st.session_state, message, analysis)
+
+if "checked_message" in st.session_state:
+    checked_message = st.session_state["checked_message"]
+    checked_analysis = st.session_state.get("checked_analysis")
+    if not checked_message.strip():
+        st.warning("Paste a message or choose an example first.")
+    else:
+        _render_result(
+            checked_message,
+            st.container(),
+            analysis=checked_analysis,
+        )
 
 st.divider()
 st.caption(
