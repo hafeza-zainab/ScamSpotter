@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from contextlib import nullcontext
+import base64
 
 import demo
 
@@ -25,6 +26,44 @@ def test_scene_target_is_typing_or_audio_plus_only_a_short_pause():
     assert target <= max(len(message) * 0.018 * speed, audio_duration) + 0.3
 
 
+def test_audio_html_uses_hidden_player_free_component_and_swallows_autoplay_errors():
+    markup = demo._audio_html("data:audio/mp3;base64,ZmFrZQ==")
+    assert "new Audio('data:audio/mp3;base64,ZmFrZQ==')" in markup
+    assert "audio.play().catch(() => {})" in markup
+    assert "pagehide" in markup and "audio.pause()" in markup
+    assert "controls" not in markup
+
+
+def test_audio_data_uri_is_cached_per_file():
+    audio_file = demo.scene_audio_path(1)
+    demo._audio_data_uri.cache_clear()
+
+    expected = "data:audio/mp3;base64," + base64.b64encode(audio_file.read_bytes()).decode("ascii")
+    assert demo._audio_data_uri(str(audio_file)) == expected
+    assert demo._audio_data_uri(str(audio_file)) == expected
+    assert demo._audio_data_uri.cache_info().misses == 1
+    assert demo._audio_data_uri.cache_info().hits == 1
+
+
+def test_sound_off_clears_placeholder_without_creating_component(monkeypatch):
+    audio_file = demo.scene_audio_path(1)
+    monkeypatch.setattr(demo, "scene_audio_path", lambda _number: audio_file)
+    calls = []
+    monkeypatch.setattr(demo.components, "html", lambda *args, **kwargs: calls.append(args))
+
+    class Placeholder:
+        def __init__(self):
+            self.cleared = 0
+
+        def empty(self):
+            self.cleared += 1
+
+    placeholder = Placeholder()
+    assert demo.play_scene_audio(placeholder, 1, sound_enabled=False) == 0.0
+    assert placeholder.cleared == 1
+    assert calls == []
+
+
 def test_demo_runs_silently_when_audio_files_are_missing(monkeypatch):
     class FakePlaceholder:
         def empty(self):
@@ -41,6 +80,9 @@ def test_demo_runs_silently_when_audio_files_are_missing(monkeypatch):
 
         def audio(self, *_args, **_kwargs):
             raise AssertionError("missing audio must be skipped")
+
+        def container(self):
+            return nullcontext()
 
     class FakeProgress(FakePlaceholder):
         def progress(self, _value):

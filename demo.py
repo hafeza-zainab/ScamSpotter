@@ -1,10 +1,13 @@
 """A short, local-only guided tour of ScamSpotter."""
 
 import html
+import base64
+from functools import lru_cache
 import time
 from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from model import warm_model
 from result_view import analyze_message, render_result
@@ -96,6 +99,47 @@ def scene_audio_path(scene_number: int) -> Path:
     """Return the generated audio path for this one-based scene number."""
     return AUDIO_DIR / f"scene_{scene_number:02d}.mp3"
 
+
+@lru_cache(maxsize=10)
+def _audio_data_uri(audio_path: str) -> str:
+    """Read and encode each narration once, keeping playback fully local."""
+    encoded = base64.b64encode(Path(audio_path).read_bytes()).decode("ascii")
+    return f"data:audio/mp3;base64,{encoded}"
+
+
+def _audio_html(data_uri: str) -> str:
+    """Build a player-free audio component that quietly tolerates autoplay blocks."""
+    escaped_uri = html.escape(data_uri, quote=True)
+    return (
+        "<script>"
+        f"const audio = new Audio('{escaped_uri}');"
+        "audio.autoplay = true;"
+        "audio.play().catch(() => {});"
+        "window.addEventListener('pagehide', () => { audio.pause(); audio.src = ''; }, {once:true});"
+        "</script>"
+    )
+
+
+def play_scene_audio(placeholder, scene_number: int, sound_enabled: bool) -> float:
+    """Clear prior narration, then start this scene's audio if it is available."""
+    placeholder.empty()
+    if not sound_enabled:
+        return 0.0
+
+    audio_file = scene_audio_path(scene_number)
+    if not audio_file.is_file():
+        return 0.0
+    try:
+        duration = audio_duration_seconds(audio_file)
+        markup = _audio_html(_audio_data_uri(str(audio_file.resolve())))
+        with placeholder.container():
+            components.html(markup, height=0, scrolling=False)
+        return duration
+    except (OSError, ValueError):
+        # Audio is optional; encoding or file errors should never stop the demo.
+        placeholder.empty()
+        return 0.0
+
 def audio_duration_seconds(audio_path: Path) -> float:
     """Read MP3 frame headers to estimate duration without extra app packages."""
     audio_bytes = audio_path.read_bytes()
@@ -181,17 +225,6 @@ def run_demo(speed: float = 1.0, sound_enabled: bool = True) -> None:
     message_placeholder = st.empty()
     result_placeholder = st.empty()
     audio_placeholder = st.empty()
-    st.markdown(
-        "<style>"
-        "div[data-testid='stAudio']{width:0!important;height:0!important;"
-        "opacity:0!important;position:absolute!important;pointer-events:none!important;"
-        "overflow:hidden!important}"
-        "div[data-testid='stAudio'] audio{width:0!important;height:0!important;"
-        "opacity:0!important;position:absolute!important;pointer-events:none!important}"
-        "</style>",
-        unsafe_allow_html=True,
-    )
-
     def update_caption(step_number: int, caption: str) -> None:
         elapsed = time.monotonic() - started_at
         caption_placeholder.caption(
@@ -207,23 +240,7 @@ def run_demo(speed: float = 1.0, sound_enabled: bool = True) -> None:
             scene_placeholder.info(scene["caption"])
             message_placeholder.empty()
             result_placeholder.empty()
-            audio_placeholder.empty()
-
-            audio_duration = 0.0
-            if sound_enabled:
-                audio_file = scene_audio_path(index)
-                if audio_file.is_file():
-                    try:
-                        audio_duration = audio_duration_seconds(audio_file)
-                        audio_placeholder.audio(
-                            audio_file.read_bytes(),
-                            format="audio/mp3",
-                            autoplay=True,
-                        )
-                    except (OSError, ValueError):
-                        # Missing or unreadable narration is optional; continue silently.
-                        audio_duration = 0.0
-                        audio_placeholder.empty()
+            audio_duration = play_scene_audio(audio_placeholder, index, sound_enabled)
 
             message = scene["message"]
             if message:
