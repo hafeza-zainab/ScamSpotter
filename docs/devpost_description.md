@@ -1,0 +1,9 @@
+# Devpost description
+
+ScamSpotter is a message checker that helps people pause before responding to suspicious SMS, WhatsApp, and email messages. Paste a message to see a Low, Medium, or High risk estimate, the red flags detected, and practical next steps. The checker combines a scikit-learn text classifier with readable rules for common patterns such as fake KYC warnings, OTP and UPI requests, prize claims, job offers, and courier alerts. It also includes Hinglish examples and an optional guided demo with locally played narration. Try it at [scamspotter-gbkc.onrender.com](https://scamspotter-gbkc.onrender.com); it is hosted on Render's free tier, where a first load can take up to a minute.
+
+The model is trained on a **synthetic dataset** generated from fictional templates; its examples are not real messages and do not represent a real-world accuracy study. ScamSpotter is a **guidance aid, not proof that a message is safe**. A Low result cannot confirm that a sender or message is genuine. Verify requests using an organization’s official app, website, or independently sourced phone number, and never share an OTP or UPI PIN in response to an unsolicited message.
+
+The app runs without a paid API and does not store or send pasted messages to an outside service. It is an educational project, not a replacement for professional fraud support.
+
+**AI tools used:** OpenAI Codex assisted with scaffolding, the synthetic data generator, red-flag rules, classifier, app and demo, documentation, and tests. The demo narration voice was generated using `edge-tts` (en-IN-NeerjaNeural), which reads generic scene narration rather than scam or user messages. I reviewed, tested, and modified the code and checked sample-message results. The model has only been evaluated on its synthetic held-out examples and a small self-authored challenge set; these scores do not establish real-world accuracy.

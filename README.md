@@ -1,6 +1,28 @@
 # ScamSpotter
 
+**Live demo:** [ScamSpotter on Render](https://scamspotter-gbkc.onrender.com). This uses Render's free tier, so the first load can take up to a minute while the service starts.
+
 An educational project for the Community Impact student AI hackathon. The app helps people pause and review suspicious SMS, WhatsApp, and email messages before they respond.
+
+## Screenshots
+
+![ScamSpotter home page with the demo controls, example buttons, and message box](docs/screenshots/01-home.png)
+*The home page offers sample messages and a place to check a message.*
+
+![High risk result with red flags, explanation, and advice](docs/screenshots/02-scam-high.png)
+*A suspicious KYC message receives a High result with warning signs and next steps.*
+
+![Low risk result for an OTP notice that says not to share the code](docs/screenshots/03-safe-low.png)
+*A safety notice about an OTP receives a Low result; the screen still reminds users this does not prove safety.*
+
+![High risk result for a Hinglish prize and fee request](docs/screenshots/04-hinglish.png)
+*A Hinglish prize message is flagged for urgency, a payment request, and a prize claim.*
+
+![Simple explanation shown for a Low risk delivery update](docs/screenshots/05-explanation.png)
+*The optional explanation describes the score and lack of detected warning signs for a routine delivery update.*
+
+![Guided demo showing a typed KYC scam and its High risk result](docs/screenshots/06-demo.png)
+*The guided demo types a fictional KYC warning and analyzes it with the app.*
 
 ## The problem
 
@@ -8,7 +30,7 @@ Scam messages can impersonate banks, government services, courier companies, and
 
 ## The solution
 
-Paste a message into the local Streamlit app to get a Low, Medium, or High risk estimate, readable red flags, and practical next steps. The app combines a scikit-learn text classifier with editable keyword and regular-expression rules. It runs without a paid API; pasted text is not saved or sent to an outside service by the app.
+Paste a message into the local Streamlit app to get a Low, Medium, or High risk estimate, readable red flags, and practical next steps. The app combines a scikit-learn text classifier with editable keyword and regular-expression rules. The training dataset is synthetic, and the model is a guidance aid: a Low risk result is not proof that a message is safe. It runs without a paid API; pasted text is not saved or sent to an outside service by the app.
 
 ## Features
 
@@ -29,10 +51,10 @@ Use Python 3.10 or newer. Open a terminal in the project folder and run:
 ~~~powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python data/generate_dataset.py
 python model.py
-streamlit run app.py
+python -m streamlit run app.py
 ~~~
 
 The generator writes 400 synthetic examples (200 scam and 200 safe) to data/messages.csv. The training command prints accuracy, scam precision and recall, confusion matrices, evaluates the separate challenge set, and saves the trained classifier to model.pkl. Running python model.py before the app is optional: if model.pkl is missing, the first message check trains the model locally, shows a progress spinner, and caches the result. If the training data is unavailable, the checker continues with rules-only guidance and displays a notice.
@@ -48,10 +70,9 @@ python tools/generate_audio.py
 
 The script reads each scene's editable narration text from demo.py and writes scene_01.mp3 through scene_10.mp3 in assets/audio/. It uses edge-tts with the en-IN-NeerjaNeural Indian English voice. These short generic narrations do not read the sample scam messages or user-pasted messages aloud. If audio files are absent, the demo continues silently.
 
-Optional tests:
+Run the tests:
 
 ~~~powershell
-pip install pytest
 python -m pytest -q
 ~~~
 
@@ -90,15 +111,11 @@ These are small educational checks, not evidence of real-world accuracy. The gen
 
 ## AI tools used
 
-OpenAI Codex assisted with project scaffolding, the synthetic dataset generator, red-flag rules, the local classifier, Streamlit UI and demo, documentation, and pytest coverage. I reviewed and modified the code, ran the tests, and checked the behavior against sample messages.
+OpenAI Codex assisted with project scaffolding, synthetic dataset generation, red-flag rules, the local classifier, Streamlit UI and demo, documentation, and pytest coverage. The demo narration voice was generated locally from the editable scene narration using `edge-tts` (en-IN-NeerjaNeural); it does not read scam messages aloud. I reviewed and changed the generated code, tested the rules and demo flows, and checked results against fictional sample messages. I also reviewed the README's performance claims against a fresh local model run and the recorded small test sets. The deployed app runs on Render's free tier.
 
 ## What I learned
 
-- TF-IDF turns text into numeric features a traditional machine-learning model can use.
-- Word and character patterns help catch both familiar phrases and spelling variations.
-- Simple rules make model results easier to explain, but broad rules can also create false alarms.
-- A random train/test split can look excellent when examples are very similar; separate tricky examples help reveal weaknesses.
-- A model score is an estimate and should be paired with careful, practical safety advice.
+Building this taught me that a text model only sees patterns in examples, not the real-world truth behind a message. Word and character TF-IDF features help it recognize familiar wording and small spelling changes, while the rules give people a clearer reason for a warning. I also learned that similar synthetic examples can make a random test split look much better than the app may perform on new messages. The small tricky-message check is useful for finding gaps, but it is not enough to claim real-world accuracy. Finally, Streamlit reruns the app after interactions, so I had to keep the checked message and analysis in session state to preserve the result when the explanation checkbox changes.
 
 ## What I'd build next
 
