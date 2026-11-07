@@ -3,6 +3,7 @@
 import html
 import base64
 from functools import lru_cache
+import logging
 import time
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from result_view import analyze_message, render_result
 
 AUDIO_DIR = Path(__file__).parent / "assets" / "audio"
 VOICE = "en-IN-NeerjaNeural"
+LOGGER = logging.getLogger(__name__)
 
 # Keep these scenes as editable data so the demo story can be changed easily.
 SCENES = [
@@ -133,7 +135,12 @@ def play_scene_audio(placeholder, scene_number: int, sound_enabled: bool) -> flo
         duration = audio_duration_seconds(audio_file)
         markup = _audio_html(_audio_data_uri(str(audio_file.resolve())))
         with placeholder.container():
-            components.html(markup, height=0, scrolling=False)
+            components.html(
+                markup,
+                height=0,
+                scrolling=False,
+                key=f"demo-narration-{scene_number}",
+            )
         return duration
     except (OSError, ValueError):
         # Audio is optional; encoding or file errors should never stop the demo.
@@ -221,10 +228,12 @@ def run_demo(speed: float = 1.0, sound_enabled: bool = True) -> None:
     total_steps = len(SCENES)
     caption_placeholder = st.empty()
     progress_bar = st.progress(0.0)
+    # Keep narration in its own slot before the content area. It never shares or
+    # clears the message and result placeholders used by the scene renderer.
+    audio_placeholder = st.empty()
     scene_placeholder = st.empty()
     message_placeholder = st.empty()
     result_placeholder = st.empty()
-    audio_placeholder = st.empty()
     def update_caption(step_number: int, caption: str) -> None:
         elapsed = time.monotonic() - started_at
         caption_placeholder.caption(
@@ -235,44 +244,66 @@ def run_demo(speed: float = 1.0, sound_enabled: bool = True) -> None:
     try:
         for index, scene in enumerate(SCENES, start=1):
             scene_started = time.monotonic()
-            progress_bar.progress(index / total_steps)
-            update_caption(index, scene["caption"])
-            scene_placeholder.info(scene["caption"])
-            message_placeholder.empty()
-            result_placeholder.empty()
-            audio_duration = play_scene_audio(audio_placeholder, index, sound_enabled)
-
             message = scene["message"]
-            if message:
-                _show_typed_message(
+            audio_duration = 0.0
+            try:
+                progress_bar.progress(index / total_steps)
+                update_caption(index, scene["caption"])
+                scene_placeholder.info(scene["caption"])
+                message_placeholder.empty()
+                result_placeholder.empty()
+
+                # Start optional narration first, but isolate any player failure
+                # so it can never skip the text animation or the real analysis.
+                try:
+                    audio_duration = play_scene_audio(
+                        audio_placeholder, index, sound_enabled
+                    )
+                except Exception:
+                    LOGGER.exception("Narration component failed at demo step %s", index)
+                    scene_placeholder.warning(
+                        "Narration could not play; continuing the demo silently."
+                    )
+
+                # Scene work always completes before the timing wait: audio time
+                # does not control whether the message is typed or analyzed.
+                if message:
+                    _show_typed_message(
+                        message,
+                        message_placeholder,
+                        speed,
+                        lambda: update_caption(index, scene["caption"]),
+                    )
+                    analysis = analyze_message(message)
+                    render_result(
+                        message,
+                        result_placeholder,
+                        show_explanation=scene.get("show_explanation", False),
+                        analysis=analysis,
+                    )
+
+                update_caption(index, scene["caption"])
+                elapsed = time.monotonic() - scene_started
+                # Typing and narration overlap; wait for the longer one plus
+                # the short pause, accounting for time spent rendering content.
+                target_duration = scene_target_duration(
                     message,
-                    message_placeholder,
                     speed,
+                    audio_duration,
+                    scene["wait_time"],
+                )
+                wait(
+                    max(0.0, target_duration - elapsed),
+                    1.0,
                     lambda: update_caption(index, scene["caption"]),
                 )
-                # Demo and manual checks share the same analyzer and result renderer.
-                analysis = analyze_message(message)
-                render_result(
-                    message,
-                    result_placeholder,
-                    show_explanation=scene.get("show_explanation", False),
-                    analysis=analysis,
+            except Exception:
+                LOGGER.exception("Guided demo rendering failed at step %s", index)
+                message_placeholder.empty()
+                result_placeholder.empty()
+                scene_placeholder.error(
+                    "This demo scene could not be displayed. You can still try a message below."
                 )
-
-            update_caption(index, scene["caption"])
-            elapsed = time.monotonic() - scene_started
-            # Typing and narration overlap; only leave a brief scene pause after them.
-            target_duration = scene_target_duration(
-                message,
-                speed,
-                audio_duration,
-                scene["wait_time"],
-            )
-            wait(
-                max(0.0, target_duration - elapsed),
-                1.0,
-                lambda: update_caption(index, scene["caption"]),
-            )
 
     finally:
         # Clearing the player stops audio on completion and on interruption.

@@ -5,6 +5,14 @@ from contextlib import nullcontext
 import base64
 
 import demo
+import pytest
+
+
+MESSAGE_SCENES = [
+    (index, scene)
+    for index, scene in enumerate(demo.SCENES, start=1)
+    if scene["message"]
+]
 
 
 def test_every_scene_has_narration_and_a_matching_filename():
@@ -113,3 +121,140 @@ def test_demo_runs_silently_when_audio_files_are_missing(monkeypatch):
     demo.run_demo(speed=0.0, sound_enabled=True)
 
     assert rendered_messages == [message_scene["message"]]
+
+
+@pytest.mark.parametrize(
+    ("scene_number", "scene"),
+    MESSAGE_SCENES,
+    ids=[scene["caption"] for _, scene in MESSAGE_SCENES],
+)
+@pytest.mark.parametrize("sound_enabled", [True, False], ids=["sound-on", "sound-off"])
+def test_every_message_scene_types_and_renders_with_sound_on_or_off(
+    monkeypatch, scene_number, scene, sound_enabled
+):
+    events = []
+    placeholders = []
+
+    class FakePlaceholder:
+        def __init__(self):
+            self.markdown_calls = []
+            self.errors = []
+            placeholders.append(self)
+
+        def empty(self):
+            pass
+
+        def caption(self, _text):
+            pass
+
+        def info(self, _text):
+            pass
+
+        def warning(self, _text):
+            pass
+
+        def error(self, message):
+            self.errors.append(message)
+
+        def markdown(self, text, **_kwargs):
+            self.markdown_calls.append(text)
+            events.append("typed")
+
+        def container(self):
+            return nullcontext()
+
+    class FakeProgress(FakePlaceholder):
+        def progress(self, _value):
+            pass
+
+    audio_path = demo.scene_audio_path(scene_number)
+    monkeypatch.setattr(demo, "SCENES", [scene])
+    monkeypatch.setattr(demo, "scene_audio_path", lambda _number: audio_path)
+    monkeypatch.setattr(demo, "audio_duration_seconds", lambda _path: 0.02)
+    monkeypatch.setattr(demo.st, "empty", FakePlaceholder)
+    monkeypatch.setattr(demo.st, "progress", lambda _value: FakeProgress())
+    monkeypatch.setattr(demo.st, "spinner", lambda _text: nullcontext())
+    monkeypatch.setattr(demo.st, "success", lambda _text: None)
+    monkeypatch.setattr(demo, "warm_model", lambda: None)
+    monkeypatch.setattr(demo, "analyze_message", lambda _text: {"risk": "High"})
+    monkeypatch.setattr(
+        demo.components,
+        "html",
+        lambda *_args, **_kwargs: events.append("audio"),
+    )
+
+    def record_result(text, _container, **_kwargs):
+        events.append(("result", text))
+
+    monkeypatch.setattr(demo, "render_result", record_result)
+    demo.run_demo(speed=0.0, sound_enabled=sound_enabled)
+
+    # Progress also owns a placeholder-like object, so message text is slot 5.
+    typed_content = "".join(placeholders[5].markdown_calls)
+    assert scene["message"] in typed_content
+    assert ("result", scene["message"]) in events
+    if sound_enabled:
+        assert events.index("audio") < events.index("typed")
+    else:
+        assert "audio" not in events
+    assert events.index("typed") < events.index(("result", scene["message"]))
+    assert not placeholders[4].errors
+
+
+def test_scene_render_exception_is_logged_and_shown(monkeypatch, caplog):
+    scene = MESSAGE_SCENES[0][1]
+
+    class FakePlaceholder:
+        def __init__(self):
+            self.errors = []
+
+        def empty(self):
+            pass
+
+        def caption(self, _text):
+            pass
+
+        def info(self, _text):
+            pass
+
+        def warning(self, _text):
+            pass
+
+        def error(self, message):
+            self.errors.append(message)
+
+        def markdown(self, _text, **_kwargs):
+            pass
+
+        def container(self):
+            return nullcontext()
+
+    class FakeProgress(FakePlaceholder):
+        def progress(self, _value):
+            pass
+
+    placeholders = []
+
+    def make_placeholder():
+        placeholder = FakePlaceholder()
+        placeholders.append(placeholder)
+        return placeholder
+
+    monkeypatch.setattr(demo, "SCENES", [scene])
+    monkeypatch.setattr(demo, "scene_audio_path", lambda _number: Path("missing.mp3"))
+    monkeypatch.setattr(demo.st, "empty", make_placeholder)
+    monkeypatch.setattr(demo.st, "progress", lambda _value: FakeProgress())
+    monkeypatch.setattr(demo.st, "spinner", lambda _text: nullcontext())
+    monkeypatch.setattr(demo.st, "success", lambda _text: None)
+    monkeypatch.setattr(demo, "warm_model", lambda: None)
+    monkeypatch.setattr(demo, "analyze_message", lambda _text: {"risk": "High"})
+    monkeypatch.setattr(
+        demo,
+        "render_result",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("render failed")),
+    )
+
+    demo.run_demo(speed=0.0, sound_enabled=False)
+
+    assert "Guided demo rendering failed at step 1" in caplog.text
+    assert any("could not be displayed" in message for message in placeholders[3].errors)
